@@ -108,6 +108,42 @@
   margin-left: 0.5rem;
 }
 
+.numberInput {
+  border: 1px solid silver;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 100%;
+}
+
+.submitBtn {
+  background-color: #0070f3;
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  display: block;
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.submitBtn:hover {
+  background-color: violet;
+}
+
+.errorSpan {
+  display: block;
+  text-align: center;
+  color: red;
+  font-style: italic;
+  font-size: 80%;
+}
+
+.statusBlock {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 100%;
+}
+
 @media (max-width: 600px) {
   .grid {
     width: 100%;
