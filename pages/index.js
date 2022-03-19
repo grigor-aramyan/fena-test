@@ -3,10 +3,19 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import styles from '../styles/Home.module.css'
 
+const JOB_ID_STORAGE_KEY = 'JOB_ID_STORAGE_KEY';
+
 export default function Home() {
-  const [status, setStatus] = useState(2);
+  const [status, setStatus] = useState();
   const [submitError, setSubmitError] = useState(null);
   const [numberValue, setNumberValue] = useState();
+
+  useEffect(() => {
+    const unfinishedJobId = localStorage.getItem(JOB_ID_STORAGE_KEY);
+    if (unfinishedJobId) {
+      pollJobStatus(unfinishedJobId);
+    }
+  }, []);
 
   const submitForm = () => {
     if(!numberValue || numberValue < 1) {
@@ -15,6 +24,31 @@ export default function Home() {
     }
 
     setSubmitError(null);
+
+    axios.post('/api/deliver', { count: numberValue })
+      .then(res => {
+        if (res.status == 200) {
+          const {
+            jobId,
+            status
+          } = res.data;
+
+          setStatus(status);
+          localStorage.setItem(JOB_ID_STORAGE_KEY, jobId);
+          pollJobStatus(jobId);
+        } else {
+          console.error('error status on submit count', res.data);
+          setSubmitError(res.data.message);
+        }
+      })
+      .catch(err => {
+        console.error('error on submitting count', err);
+        alert('submit error');
+      });
+  }
+
+  const pollJobStatus = (jobId) => {
+    console.log('polling job status', jobId);
   }
 
   return (
