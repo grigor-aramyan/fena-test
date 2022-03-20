@@ -30,6 +30,7 @@ const queueName = 'routine_jobs';
 
 const routineJobsQueue = new Queue(queueName, { redis: { port: redisPort, host: redisHost } });
 
+let io;
 routineJobsQueue.process(async function (job, done) {
   const {
       id,
@@ -50,12 +51,19 @@ routineJobsQueue.process(async function (job, done) {
 
       sentEmails.push(i + 1);
 
+      const socketPayload = {
+          broadcastedJobId: id,
+          status: i + 1
+      };
+      console.log('broadcasting status', socketPayload);
+      io.emit('status-update', socketPayload);
+
       if (sentEmails.length == 10) {
             const emailsToSend = sentEmails.map(n => {
                 return ({
                     value: n + ''
                 });
-            })
+            });
             await producer.send({
                 topic: id,
                 messages: emailsToSend,
@@ -93,6 +101,10 @@ export default async function handler(req, res) {
     if (!count || count < 1) {
         res.status(400).send({ message: 'Number must be greater than 0' });
         return;
+    }
+
+    if (res.socket.server.io) {
+        io = res.socket.server.io;
     }
 
     const jobId = uuidv4();

@@ -1,21 +1,94 @@
 import Head from 'next/head'
 import { useEffect, useState } from 'react';
+import io from 'Socket.IO-client';
 import axios from 'axios';
 import styles from '../styles/Home.module.css'
 
 const JOB_ID_STORAGE_KEY = 'JOB_ID_STORAGE_KEY';
+const NUMBER_VALUE_STORAGE_KEY = 'NUMBER_VALUE_STORAGE_KEY';
 
 export default function Home() {
   const [status, setStatus] = useState();
   const [submitError, setSubmitError] = useState(null);
   const [numberValue, setNumberValue] = useState();
+  const [jobId, setJobId] = useState();
+
+  let socket;
 
   useEffect(() => {
-    const unfinishedJobId = localStorage.getItem(JOB_ID_STORAGE_KEY);
-    if (unfinishedJobId) {
-      pollJobStatus(unfinishedJobId);
+    if (status == numberValue) {
+      console.log('removing from storage');
+      localStorage.removeItem(JOB_ID_STORAGE_KEY);
+      localStorage.removeItem(NUMBER_VALUE_STORAGE_KEY);
+    }
+  }, [status]);
+
+  useEffect(async () => {
+    // initializing socket server
+    await fetch('/api/socket');
+    socket = io();
+
+    socket.on('connect', () => {
+      console.log('connected');
+    });
+
+    socket.on('status-update', ({ broadcastedJobId, status }) => {
+
+      // ************ TODO **************
+      // check why values from state and localStorage are
+      // getting cleared while receiving messages from server socket
+      // notes: server is broadcasting clearly, confirmed from logs
+      // notes: possible reason, client side is unable to parse
+      // notes... data with same speed
+      // notes: need further investigation
+      // notes: till that all checks are removed before updating state
+      
+      setStatus(status);
+      
+      
+
+      // notes: checks were here
+      
+      // const storedJobId = localStorage.getItem(JOB_ID_STORAGE_KEY);
+      // const storedNumberValue = localStorage.getItem(NUMBER_VALUE_STORAGE_KEY);
+      // console.log('received job status', status, broadcastedJobId);
+      // console.log('stored job id', storedJobId, storedNumberValue);
+
+      // if (broadcastedJobId == storedJobId) {
+      //   setStatus(status);
+      //   if (status == numberValue) {
+      //     console.log('removing from storage');
+      //     localStorage.removeItem(JOB_ID_STORAGE_KEY);
+      //     localStorage.removeItem(NUMBER_VALUE_STORAGE_KEY);
+      //   }
+      // }
+
+    });
+
+  }, []);
+
+  // the following 2 useEffects are for the case when browser
+  // or tab was closed before the job was completed
+  useEffect(() => {
+    const storedNumberValue = localStorage.getItem(NUMBER_VALUE_STORAGE_KEY);
+    if (storedNumberValue) {
+      setNumberValue(storedNumberValue);
     }
   }, []);
+
+  useEffect(() => {
+    // TODO: case when input value is changed w/o
+    // the current job being finished is unhandled
+
+    if (!numberValue) return;
+
+    const unfinishedJobId = localStorage.getItem(JOB_ID_STORAGE_KEY);
+    
+    if (unfinishedJobId) {
+      setJobId(unfinishedJobId);
+      pollJobStatus(unfinishedJobId);
+    }
+  }, [numberValue]);
 
   const submitForm = () => {
     if(!numberValue || numberValue < 1) {
@@ -34,8 +107,9 @@ export default function Home() {
           } = res.data;
 
           setStatus(status);
+          setJobId(jobId);
           localStorage.setItem(JOB_ID_STORAGE_KEY, jobId);
-          pollJobStatus(jobId);
+          localStorage.setItem(NUMBER_VALUE_STORAGE_KEY, numberValue);
         } else {
           console.error('error status on submit count', res.data);
           setSubmitError(res.data.message);
@@ -48,7 +122,21 @@ export default function Home() {
   }
 
   const pollJobStatus = (jobId) => {
-    console.log('polling job status', jobId);
+    axios.get(`/api/consume/${jobId}`)
+      .then(res => {
+        if (res.status == 200) {
+          const {
+            status
+          } = res.data;
+          setStatus(status);
+        } else {
+          console.error('error status on status polling');
+        }
+      })
+      .catch(err => {
+        console.error('error on polling results', err);
+        alert('polling error');
+      });
   }
 
   return (
@@ -62,6 +150,7 @@ export default function Home() {
       <main className={styles.main}>
         
         <div className={styles.description}>
+          <h3>{ jobId }</h3>
           <input className={styles.numberInput}
             type={"number"} min="0"
             onInput={(e) => setNumberValue(e.target.value)} 
@@ -70,9 +159,11 @@ export default function Home() {
             <span className={styles.errorSpan}>{submitError}</span>
           : null
           }
-          <button className={styles.submitBtn} onClick={submitForm}>
-            Submit
-          </button>
+          <div className={styles.centeredDiv}>
+            <button className={styles.submitBtn} onClick={submitForm}>
+              Submit
+            </button>
+          </div>
 
           { status ?
             <div className={styles.statusBlock}>
