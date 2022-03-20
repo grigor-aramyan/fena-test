@@ -43,3 +43,7 @@ and server will start up on http://localhost:3000
 - On back end deliver.js and socket.js seems scalable, though consume/jobId.js handler can be a bottleneck or reason for unexpected behaviours or errors. Possible solutions can be delegation of kafka topic consumption to background workers as well or appropriate settings of web server so that concurrent requests can utilize separate kafka consumers
 - For production environment, long running separate server (other than next) can be set up so it can listen/consume kafka logs w/o interruption, insert them into traditional/cloud db, so the unfinished job client can query the db directly and not the kafka client itself (they are designed as long runners, so picking up last message and disconnecting them with every request is not the best idea)
 - Not the problem of scaling but would be awesome to find a way to create kafka consumer directly in React and consume logs from them w/o the need for intermediary socket
+
+### Additional Notes
+- If you're setting up the environment (kafka, redis) using docker compose make sure to switch kafka port in application from 9092 to 29092 as is configured in YAML file. Change ports in files pages/api/deliver.js and pages/api/consume/jobId.js. Otherwise the application is configured to connect to default ports of this services and will run as is
+- Docker compose file is untested
